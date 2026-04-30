@@ -10,7 +10,7 @@ logger.setLevel(logging.DEBUG)
 
 
 class CustomBuildHook(BuildHookInterface):
-    def initialize(self, build_data: dict[str, Any]) -> None:
+    def initialize(self, _version, build_data: dict[str, Any]) -> None:
         logger.warning("CustomBuildHook: running 'npm run build' to compile wgscovplot.js")
         workdir = Path(self.root, "web")
         has_npm = has_software("npm")
