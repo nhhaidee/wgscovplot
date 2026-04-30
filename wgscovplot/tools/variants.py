@@ -544,7 +544,7 @@ def get_nf_flu_variant_info(
         segment = items.segment
         ref_id = items.ref_id
         sample = items.sample
-        vcf_files = basedir.glob(f"**/variants/**/{sample}.Segment_{segment}.{ref_id}.no_frameshifts.vcf")
+        vcf_files = basedir.glob(f"**/variants/**/{sample}.Segment_{segment}.{ref_id}.bcftools_filt.vcf")
         ref_seq_len = 0
         if req_seq[sample][segment]:
             ref_seq_len = len(req_seq[sample][segment])
