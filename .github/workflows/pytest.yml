@@ -28,7 +28,8 @@ jobs:
         cache-dependency-path: pyproject.toml
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip hatch pytest
+        python -m pip install --upgrade pip
+        python -m pip install --upgrade hatch virtualenv pytest
     - name: Lint with ruff, black and mypy
       run: |
         hatch run lint:all
