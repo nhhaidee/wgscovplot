@@ -356,12 +356,14 @@ def parse_ivar_vcf(
         # misleading for deletions
         # See iVar issue: https://github.com/andersen-lab/ivar/issues/86
         infos = parse_vcf_info(row.INFO)
-        total_dp = infos["DP"]
         ks = row.FORMAT.split(":")
         vs = row[-1].split(":")
         record: dict[str, Union[float, int, str]] = {k: try_parse_number(v) for k, v in zip(ks, vs)}
         ref_dp = int(record["REF_DP"])
         alt_dp = int(record["ALT_DP"])
+        total_dp = infos.get("DP", record.get("DP", None))
+        if total_dp is None:
+            raise ValueError(f'No DP INFO field or DP FORMAT field found for iVar VCF at position {row.POS} for sample "{sample_name}"')
         # if the sum of the ref and alt dp does not equal the total dp reported by iVar then recalculate the ref dp
         # since it is likely only reporting the ref dp for the first base of a longer deletion. SNPs should be fine.
         sum_ref_alt_dp = ref_dp + alt_dp

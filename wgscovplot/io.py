@@ -91,7 +91,7 @@ def parse_genbank(gb_handle_or_path: Union[Path, TextIOWrapper]) -> tuple[str, l
                     feature_name = seq_feature.id
             start_pos = int(seq_feature.location.start) + 1
             end_pos = int(seq_feature.location.end)
-            strand = int(seq_feature.strand)
+            strand = int(seq_feature.location.strand)
             features.append(Feature(start=start_pos, end=end_pos, strand=strand, name=feature_name))
     features.sort(key=lambda f: f.start)
     return seq, features
