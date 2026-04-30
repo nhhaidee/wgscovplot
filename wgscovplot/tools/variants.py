@@ -7,10 +7,10 @@ from collections import defaultdict
 from enum import Enum
 from operator import itemgetter
 from pathlib import Path
-from typing import Iterable, Optional, Union
-from pandas.api.types import is_string_dtype
+from typing import Iterable, Union
 
 import pandas as pd
+from pandas.api.types import is_string_dtype
 from pydantic import BaseModel
 
 from wgscovplot.flu import SampleSegmentRef
@@ -187,10 +187,10 @@ SNPSIFT_SAMPLE_NAME_CLEANUP = [
 ]
 
 
-def vcf_selector(paths: list[Path]) -> Optional[Path]:
+def vcf_selector(paths: list[Path]) -> Path | None:
     xs = []
     for path in paths:
-        variant_caller, df = read_vcf(path)
+        _, df = read_vcf(path)
         xs.append((df.shape[0], path))
     xs.sort(reverse=True)
     try:
@@ -199,7 +199,7 @@ def vcf_selector(paths: list[Path]) -> Optional[Path]:
         return None
 
 
-def snpsift_selector(paths: list[Path]) -> Optional[Path]:
+def snpsift_selector(paths: list[Path]) -> Path | None:
     xs = []
     for path in paths:
         df = pd.read_table(path)
@@ -238,7 +238,7 @@ def read_vcf(vcf_file: Path) -> tuple[str, pd.DataFrame]:
 def parse_aa(gene: str, ref: str, alt: str, nt_pos: int, snpeff_aa: str, effect: str) -> str:
     if snpeff_aa == ".":
         return f"{ref}{nt_pos}{alt}"
-    m: Optional[re.Match[str]] = re.match(r"p\.([a-zA-Z]+)(\d+)([a-zA-Z]+)", snpeff_aa)
+    m: re.Match[str] | None = re.match(r"p\.([a-zA-Z]+)(\d+)([a-zA-Z]+)", snpeff_aa)
     if m is None and snpeff_aa.startswith("p."):
         aa_str = snpeff_aa[2:].upper()
         for aa3, aa1 in aa_codes.items():
@@ -279,7 +279,7 @@ def get_aa(s: str) -> str:
     return out
 
 
-def simplify_snpsift(df: pd.DataFrame, sample_name: str) -> Optional[pd.DataFrame]:
+def simplify_snpsift(df: pd.DataFrame, sample_name: str) -> pd.DataFrame | None:
     if df.empty:
         return None
     df = df[~df.duplicated(keep="first")]
@@ -342,8 +342,8 @@ def simplify_snpsift(df: pd.DataFrame, sample_name: str) -> Optional[pd.DataFram
 
 def parse_ivar_vcf(
     df: pd.DataFrame,
-    sample_name: Optional[str] = None,
-) -> Optional[pd.DataFrame]:
+    sample_name: str | None,
+) -> pd.DataFrame | None:
     if df.empty:
         return None
     if not sample_name:
@@ -365,7 +365,8 @@ def parse_ivar_vcf(
         alt_dp = int(record["ALT_DP"])
         total_dp = infos.get("DP", record.get("DP", None))
         if total_dp is None:
-            raise ValueError(f'No DP INFO field or DP FORMAT field found for iVar VCF at position {row.POS} for sample "{sample_name}"')
+            msg = f'No DP INFO field or DP FORMAT field found for iVar VCF for sample "{sample_name}"'
+            raise ValueError(msg)
         # if the sum of the ref and alt dp does not equal the total dp reported by iVar then recalculate the ref dp
         # since it is likely only reporting the ref dp for the first base of a longer deletion. SNPs should be fine.
         sum_ref_alt_dp = ref_dp + alt_dp
@@ -388,9 +389,9 @@ def parse_ivar_vcf(
 
 
 def merge_vcf_snpsift(
-    df_vcf: Optional[pd.DataFrame],
-    df_snpsift: Optional[pd.DataFrame],
-) -> Optional[pd.DataFrame]:
+    df_vcf: pd.DataFrame | None,
+    df_snpsift: pd.DataFrame | None,
+) -> pd.DataFrame | None:
     if df_snpsift is None and df_vcf is None:
         return None
     if df_vcf is None and df_snpsift is not None:
@@ -407,8 +408,8 @@ def merge_vcf_snpsift(
 
 def parse_longshot_vcf(
     df: pd.DataFrame,
-    sample_name: Optional[str] = None,
-) -> Optional[pd.DataFrame]:
+    sample_name: str | None,
+) -> pd.DataFrame | None:
     if df.empty:
         return None
     if not sample_name:
@@ -436,9 +437,9 @@ def parse_longshot_vcf(
 
 def parse_medaka_vcf(
     df: pd.DataFrame,
-    sample_name: Optional[str] = None,
+    sample_name: str | None,
     min_coverage: int = 10,
-) -> Optional[pd.DataFrame]:
+) -> pd.DataFrame | None:
     if df.empty:
         return None
     if not sample_name:
@@ -478,8 +479,8 @@ def parse_medaka_vcf(
 
 def parse_nanopolish_vcf(
     df: pd.DataFrame,
-    sample_name: Optional[str] = None,
-) -> Optional[pd.DataFrame]:
+    sample_name: str | None,
+) -> pd.DataFrame | None:
     if df.empty:
         return None
     if not sample_name:
@@ -526,7 +527,7 @@ def parse_vcf_info(s: str) -> dict:
 def parse_clair3_vcf(
     df: pd.DataFrame,
     sample: str,
-) -> Optional[pd.DataFrame]:
+) -> pd.DataFrame | None:
     if df.empty:
         return None
     df["Sample"] = sample
@@ -553,7 +554,7 @@ def get_nf_flu_variant_info(
         if req_seq[sample][segment]:
             ref_seq_len = len(req_seq[sample][segment])
         for vcf_file in vcf_files:
-            variants_caller, df_vcf = read_vcf(vcf_file)
+            _, df_vcf = read_vcf(vcf_file)
             vcf_infos = parse_clair3_vcf(df_vcf, sample)
             if vcf_infos is not None:
                 vcf_infos["Segment"] = segment
@@ -691,7 +692,7 @@ def to_summary(df: pd.DataFrame) -> pd.DataFrame:
     logger.debug(f"df_vars columns: {df_vars.columns}")
     df_summary = df_vars.groupby("Mutation", sort=False).agg(
         n_samples=("Sample", "size"),
-        samples=("Sample", lambda x: "; ".join(x)),
+        samples=("Sample", "; ".join),
         gene=("Gene", "first"),
         effect=("Variant Effect", "first"),
         impact=("Variant Impact", "first"),
