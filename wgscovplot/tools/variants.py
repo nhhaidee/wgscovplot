@@ -8,6 +8,7 @@ from enum import Enum
 from operator import itemgetter
 from pathlib import Path
 from typing import Iterable, Optional, Union
+from pandas.api.types import is_string_dtype
 
 import pandas as pd
 from pydantic import BaseModel
@@ -313,7 +314,8 @@ def simplify_snpsift(df: pd.DataFrame, sample_name: str) -> Optional[pd.DataFram
             else:
                 field_names.add(new_series_name)
             dfc = df[c]
-            if dfc.dtype == "object" and isinstance(dfc.values[0], str):
+            # This handles 'object' or 'string' dtypes across all Python versions and pandas versions
+            if is_string_dtype(dfc) and isinstance(dfc.values[0], str):
                 new_series = dfc.str.split(",", n=1, expand=True)[0]
             else:
                 new_series = dfc.astype("str")
@@ -356,12 +358,14 @@ def parse_ivar_vcf(
         # misleading for deletions
         # See iVar issue: https://github.com/andersen-lab/ivar/issues/86
         infos = parse_vcf_info(row.INFO)
-        total_dp = infos["DP"]
         ks = row.FORMAT.split(":")
         vs = row[-1].split(":")
         record: dict[str, Union[float, int, str]] = {k: try_parse_number(v) for k, v in zip(ks, vs)}
         ref_dp = int(record["REF_DP"])
         alt_dp = int(record["ALT_DP"])
+        total_dp = infos.get("DP", record.get("DP", None))
+        if total_dp is None:
+            raise ValueError(f'No DP INFO field or DP FORMAT field found for iVar VCF at position {row.POS} for sample "{sample_name}"')
         # if the sum of the ref and alt dp does not equal the total dp reported by iVar then recalculate the ref dp
         # since it is likely only reporting the ref dp for the first base of a longer deletion. SNPs should be fine.
         sum_ref_alt_dp = ref_dp + alt_dp
@@ -544,7 +548,7 @@ def get_nf_flu_variant_info(
         segment = items.segment
         ref_id = items.ref_id
         sample = items.sample
-        vcf_files = basedir.glob(f"**/variants/**/{sample}.Segment_{segment}.{ref_id}.no_frameshifts.vcf")
+        vcf_files = basedir.glob(f"**/variants/**/{sample}.Segment_{segment}.{ref_id}.bcftools_filt.vcf")
         ref_seq_len = 0
         if req_seq[sample][segment]:
             ref_seq_len = len(req_seq[sample][segment])

@@ -104,17 +104,17 @@ detached = true
 dependencies = [
     "black>=23.1.0",
     "mypy>=1.0.0",
-    "ruff>=0.0.243",
+    "ruff>=0.3.0",
 ]
 [tool.hatch.envs.lint.scripts]
 typing = "mypy --install-types --ignore-missing-imports --non-interactive {args:wgscovplot tests}"
 style = [
-    "ruff {args:.}",
+    "ruff check {args:.}",
     "black --check --diff {args:.}",
 ]
 fmt = [
     "black {args:.}",
-    "ruff --fix {args:.}",
+    "ruff check --fix {args:.}",
     "style",
 ]
 all = [
