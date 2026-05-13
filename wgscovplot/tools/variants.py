@@ -520,6 +520,7 @@ def parse_nanopolish_vcf(
     cols_to_keep = list({col for col, _, _ in variants_cols} & set(df_merge.columns))
     return df_merge.loc[:, cols_to_keep]
 
+
 def parse_bcftools_vcf(df: pd.DataFrame, sample_name: str | None) -> pd.DataFrame | None:
     if df.empty:
         return None
@@ -533,8 +534,10 @@ def parse_bcftools_vcf(df: pd.DataFrame, sample_name: str | None) -> pd.DataFram
         infos = parse_vcf_info(row.INFO)
         allele_count = infos["AC"]
         if allele_count > 1:
-            err_msg = (f"Handling of allele count of {allele_count} is not supported. "
-                       "Only allele counts of 1 are supported.")
+            err_msg = (
+                f"Handling of allele count of {allele_count} is not supported. "
+                "Only allele counts of 1 are supported."
+            )
             raise NotImplementedError(err_msg)
         ref_dp, alt_dp = infos["AD"]
         infos["REF_DP"] = ref_dp
@@ -549,6 +552,7 @@ def parse_bcftools_vcf(df: pd.DataFrame, sample_name: str | None) -> pd.DataFram
     df_merge["ALT_FREQ"] = df_merge.ALT_DP / df_merge.DP
     cols_to_keep = list({col for col, _, _ in variants_cols} & set(df_merge.columns))
     return df_merge.loc[:, cols_to_keep]
+
 
 def parse_vcf_info(s: str) -> dict:
     out = {}
