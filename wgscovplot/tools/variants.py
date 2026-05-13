@@ -149,17 +149,17 @@ class VariantCaller(Enum):
     Nanopolish = "nanopolish"
     Medaka = "medaka"
     clair3 = "clair3"
-    Bcftools = 'bcftools'
+    Bcftools = "bcftools"
 
 
 VCF_GLOB_PATTERNS = [
     "**/nanopolish/*.pass.vcf.gz",
     "**/ivar/*.vcf.gz",
-    '**/bcftools/*.vcf.gz',
+    "**/bcftools/*.vcf.gz",
     "**/*.filt.no_fs.vcf",
     "**/*.longshot.vcf",
     "**/*.vcf",
-    '**/*.vcf.gz',
+    "**/*.vcf.gz",
 ]
 
 VCF_SAMPLE_NAME_CLEANUP = [
@@ -170,8 +170,8 @@ VCF_SAMPLE_NAME_CLEANUP = [
     re.compile(r"\.longshot"),
     re.compile(r"\.snpeff"),
     re.compile(r"\.no_fs"),
-    re.compile(r'\.merged'),
-    re.compile(r'\.filtered'),
+    re.compile(r"\.merged"),
+    re.compile(r"\.filtered"),
     re.compile(r"\.topsegments.csv"),
 ]
 
@@ -227,8 +227,8 @@ def read_vcf(vcf_file: Path) -> tuple[str, pd.DataFrame]:
                 variant_caller = line.strip().replace("##source=", "").lower()
             if line.startswith("##nanopolish"):
                 variant_caller = "nanopolish"
-            if line.startswith('##bcftools_callVersion'):
-                variant_caller = 'bcftools'
+            if line.startswith("##bcftools_callVersion"):
+                variant_caller = "bcftools"
             if line.startswith("##medaka_version"):
                 variant_caller = "medaka"
             if line.startswith("#CHROM"):
@@ -520,31 +520,33 @@ def parse_nanopolish_vcf(
     cols_to_keep = list({col for col, _, _ in variants_cols} & set(df_merge.columns))
     return df_merge.loc[:, cols_to_keep]
 
-def parse_bcftools_vcf(df: pd.DataFrame, sample_name: str = None) -> pd.DataFrame | None:
+def parse_bcftools_vcf(df: pd.DataFrame, sample_name: str | None) -> pd.DataFrame | None:
     if df.empty:
         return None
     if not sample_name:
-        sample_name = df.columns[-1] if df.columns[-1] != 'sample' else None
+        sample_name = df.columns[-1] if df.columns[-1] != "sample" else None
         if sample_name is None:
-            raise ValueError(f'Sample name is not defined for VCF: shape={df.shape}; columns={df.columns}')
+            err_msg = f"Sample name is not defined for VCF: shape={df.shape}; columns={df.columns}"
+            raise ValueError(err_msg)
     pos_info_val = {}
     for row in df.itertuples():
         infos = parse_vcf_info(row.INFO)
-        allele_count = infos['AC']
+        allele_count = infos["AC"]
         if allele_count > 1:
-            raise NotImplementedError(f'Handling of allele count of {allele_count} is not supported. '
-                                      f'Only allele counts of 1 are supported.')
-        ref_dp, alt_dp = infos['AD']
-        infos['REF_DP'] = ref_dp
-        infos['ALT_DP'] = alt_dp
+            err_msg = (f"Handling of allele count of {allele_count} is not supported. "
+                       "Only allele counts of 1 are supported.")
+            raise NotImplementedError(err_msg)
+        ref_dp, alt_dp = infos["AD"]
+        infos["REF_DP"] = ref_dp
+        infos["ALT_DP"] = alt_dp
         pos_info_val[row.POS] = infos
     df_bcftools_info = pd.DataFrame(pos_info_val).transpose()
-    df_bcftools_info.index.name = 'POS'
+    df_bcftools_info.index.name = "POS"
     df_bcftools_info.reset_index(inplace=True)
-    df_merge = pd.merge(df, df_bcftools_info, on='POS')
-    df_merge['sample'] = sample_name
+    df_merge = pd.merge(df, df_bcftools_info, on="POS")
+    df_merge["sample"] = sample_name
     df_merge = df_merge[df_merge.DP > 0]
-    df_merge['ALT_FREQ'] = df_merge.ALT_DP / df_merge.DP
+    df_merge["ALT_FREQ"] = df_merge.ALT_DP / df_merge.DP
     cols_to_keep = list({col for col, _, _ in variants_cols} & set(df_merge.columns))
     return df_merge.loc[:, cols_to_keep]
 
@@ -553,7 +555,7 @@ def parse_vcf_info(s: str) -> dict:
     for x in s.split(";"):
         if not x:
             continue
-        if '=' not in x:
+        if "=" not in x:
             continue
         key, val_str = x.split("=", maxsplit=1)
         out[key] = try_parse_number(val_str)
